@@ -1,30 +1,70 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Terminal, Key, ShieldAlert, LogOut, RefreshCcw } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export default function ResellerPanel() {
     const [secretKey, setSecretKey] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [history, setHistory] = useState<any[]>([]);
     const [generatedKey, setGeneratedKey] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [history, setHistory] = useState<any[]>([]);
+    const [serverStatus, setServerStatus] = useState(true); // Default to on
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const loginCanvasRef = useRef<HTMLCanvasElement>(null);
 
-    // Carregar sessão
+    // MATRIX EFFECT
+    const initMatrix = (canvas: HTMLCanvasElement) => {
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZLKLXITLIOS';
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = Array(Math.floor(columns)).fill(1);
+
+        const draw = () => {
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0F0';
+            ctx.font = fontSize + 'px monospace';
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        };
+        const interval = setInterval(draw, 33);
+        return () => clearInterval(interval);
+    };
+
+    useEffect(() => {
+        if (isAuthenticated && canvasRef.current) initMatrix(canvasRef.current);
+        else if (!isAuthenticated && loginCanvasRef.current) initMatrix(loginCanvasRef.current);
+    }, [isAuthenticated]);
+
+    // LOAD SESSION & SERVER STATUS
     useEffect(() => {
         const savedKey = localStorage.getItem('reseller_secret');
         if (savedKey) {
             setSecretKey(savedKey);
             setIsAuthenticated(true);
         }
+        fetchServerStatus();
     }, []);
 
-    // Carregar histórico quando autenticado
+    // LOAD HISTORY
     useEffect(() => {
         if (isAuthenticated && secretKey) {
             fetchHistory();
         }
     }, [isAuthenticated, secretKey]);
+
+    const fetchServerStatus = async () => {
+        const { data } = await supabase.from('settings').select('value').eq('key', 'server_status').single();
+        if (data && data.value) setServerStatus(data.value.enabled);
+    };
 
     const fetchHistory = async () => {
         try {
@@ -34,11 +74,9 @@ export default function ResellerPanel() {
                 body: JSON.stringify({ secretKey })
             });
             const data = await res.json();
-            if (data.keys) {
-                setHistory(data.keys);
-            }
+            if (data.keys) setHistory(data.keys);
         } catch (e) {
-            console.error('Erro ao carregar histórico');
+            console.error(e);
         }
     };
 
@@ -54,32 +92,24 @@ export default function ResellerPanel() {
         localStorage.removeItem('reseller_secret');
         setSecretKey('');
         setIsAuthenticated(false);
-        setGeneratedKey(null);
         setHistory([]);
     };
 
     const generateKey = async (duration: string) => {
         setLoading(true);
-        setError('');
         setGeneratedKey(null);
-
         try {
             const res = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ secretKey, durationType: duration }),
             });
-
             const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || 'Erro ao gerar key');
-            }
-
+            if (!res.ok) throw new Error(data.error || 'Erro');
             setGeneratedKey(data.key);
-            fetchHistory(); // Atualiza histórico do banco
+            fetchHistory();
         } catch (err: any) {
-            setError(err.message);
+            alert(err.message);
         } finally {
             setLoading(false);
         }
@@ -87,25 +117,25 @@ export default function ResellerPanel() {
 
     if (!isAuthenticated) {
         return (
-            <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-black text-green-500 font-mono">
-                <div className="w-full max-w-md p-8 border border-green-500/30 rounded-lg bg-gray-900/50 backdrop-blur shadow-[0_0_20px_rgba(0,255,0,0.1)]">
-                    <div className="flex justify-center mb-6">
-                        <Terminal size={48} />
-                    </div>
-                    <h1 className="text-2xl font-bold text-center mb-8 uppercase tracking-widest">Acesso Revendedor</h1>
+            <main className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-black text-white font-mono">
+                <canvas ref={loginCanvasRef} className="fixed inset-0 pointer-events-none opacity-20" />
+                <div className="glass-panel p-10 rounded-lg border border-green-900 shadow-[0_0_50px_rgba(0,255,65,0.1)] w-full max-w-md text-center relative z-10">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent opacity-50" />
+                    <h1 className="text-4xl font-black text-white mb-2 tracking-tighter glitch" data-text="LKL XIT LIOS">LKL XIT LIOS</h1>
+                    <p className="text-xs text-green-500 uppercase tracking-[0.3em] mb-8">Área do Revendedor</p>
                     <form onSubmit={handleLogin} className="space-y-4">
-                        <input
-                            type="password"
-                            placeholder="Digite sua Secret Key"
-                            value={secretKey}
-                            onChange={(e) => setSecretKey(e.target.value)}
-                            className="w-full bg-black border border-green-500/50 p-3 rounded text-center focus:outline-none focus:border-green-400 focus:shadow-[0_0_10px_rgba(0,255,0,0.2)] transition"
-                        />
-                        <button
-                            type="submit"
-                            className="w-full bg-green-600 hover:bg-green-500 text-black font-bold p-3 rounded transition uppercase"
-                        >
-                            Entrar no Sistema
+                        <div className="relative group">
+                            <input
+                                type="password"
+                                placeholder="SECRET KEY"
+                                value={secretKey}
+                                onChange={(e) => setSecretKey(e.target.value)}
+                                className="w-full bg-black/50 border border-gray-800 text-center text-white p-3 text-sm focus:border-green-500 outline-none transition-colors tracking-widest font-bold placeholder-gray-700"
+                            />
+                            <div className="absolute bottom-0 left-0 w-0 h-[1px] bg-green-500 transition-all duration-300 group-hover:w-full"></div>
+                        </div>
+                        <button type="submit" className="w-full mt-8 bg-green-900/20 border border-green-500 text-green-500 py-3 text-sm font-bold hover:bg-green-500 hover:text-black transition-all duration-300 uppercase tracking-widest hover:shadow-[0_0_20px_rgba(0,255,65,0.4)]">
+                            ACESSAR PAINEL
                         </button>
                     </form>
                 </div>
@@ -114,85 +144,74 @@ export default function ResellerPanel() {
     }
 
     return (
-        <main className="min-h-screen bg-black text-green-500 font-mono p-4 md:p-8">
-            <div className="max-w-4xl mx-auto">
-                <header className="flex justify-between items-center mb-12 border-b border-green-500/30 pb-4">
-                    <div className="flex items-center gap-2">
-                        <Terminal className="text-green-400" />
-                        <span className="text-xl font-bold tracking-widest">LKL RESELLER_V1</span>
+        <main className="min-h-screen flex flex-col items-center p-4 sm:p-8 bg-black text-white font-mono relative overflow-hidden">
+            <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none opacity-20" />
+
+            <header className="w-full max-w-7xl flex flex-col md:flex-row justify-between items-center mb-8 md:mb-12 z-10 gap-6 md:gap-0">
+                <div className="text-center md:text-left">
+                    <h1 className="text-4xl md:text-7xl font-black text-white tracking-tighter glitch" data-text="LKL XIT LIOS">LKL XIT LIOS</h1>
+                    <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
+                        <span className={`w-2 h-2 rounded-full animate-pulse ${serverStatus ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                        <p className={`text-xs uppercase tracking-[0.2em] ${serverStatus ? 'text-green-500' : 'text-red-500'}`}>
+                            SERVER {serverStatus ? 'ONLINE' : 'OFFLINE'}
+                        </p>
                     </div>
-                    <button onClick={logout} className="flex items-center gap-2 text-red-500 hover:text-red-400 text-sm font-bold">
-                        <LogOut size={16} /> SAIR
+                </div>
+                <button onClick={logout} className="glass-panel px-4 py-3 text-red-500 border-red-900 hover:bg-red-500 hover:text-black transition font-bold text-xs uppercase tracking-wider hover-glow">
+                    LOGOUT
+                </button>
+            </header>
+
+            {/* GENERATOR */}
+            <div className="w-full max-w-7xl glass-panel p-6 md:p-8 mb-8 z-10 border-l-4 border-neon-green">
+                <h2 className="text-xl font-bold text-neon-green mb-6 tracking-widest uppercase border-b border-green-900/50 pb-2">GERAR LICENÇA</h2>
+
+                <div className="flex flex-col md:flex-row gap-4 mb-6">
+                    <button onClick={() => generateKey('monthly')} disabled={loading} className="flex-1 bg-green-900/20 border border-green-500 text-green-500 py-4 font-bold hover:bg-green-500 hover:text-black transition uppercase tracking-widest hover:shadow-[0_0_20px_rgba(0,255,65,0.2)]">
+                        MENSAL (30 DIAS)
                     </button>
-                </header>
+                    <button onClick={() => generateKey('weekly')} disabled={loading} className="flex-1 bg-green-900/20 border border-green-500 text-green-500 py-4 font-bold hover:bg-green-500 hover:text-black transition uppercase tracking-widest hover:shadow-[0_0_20px_rgba(0,255,65,0.2)]">
+                        SEMANAL (7 DIAS)
+                    </button>
+                </div>
 
-                <div className="grid md:grid-cols-2 gap-8">
-                    {/* Generator Section */}
-                    <div className="border border-green-500/30 rounded-lg p-6 bg-gray-900/30">
-                        <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
-                            <Key size={20} /> GERAR NOVA LICENÇA
-                        </h2>
+                {loading && <div className="text-center text-green-500 animate-pulse font-bold tracking-widest">GERANDO KEY...</div>}
 
-                        <div className="grid grid-cols-2 gap-4 mb-6">
-                            <button onClick={() => generateKey('monthly')} disabled={loading} className="bg-green-900/30 hover:bg-green-500/20 border border-green-500/50 p-4 rounded transition text-center hover:scale-[1.02] active:scale-[0.98]">
-                                <div className="font-bold">MENSAL</div>
-                                <div className="text-xs opacity-70">30 DIAS</div>
-                            </button>
-                            <button onClick={() => generateKey('weekly')} disabled={loading} className="bg-green-900/30 hover:bg-green-500/20 border border-green-500/50 p-4 rounded transition text-center hover:scale-[1.02] active:scale-[0.98]">
-                                <div className="font-bold">SEMANAL</div>
-                                <div className="text-xs opacity-70">7 DIAS</div>
-                            </button>
-                        </div>
-
-                        {loading && <div className="text-center animate-pulse text-green-400">PROCESSANDO CRIPTOGRAFIA...</div>}
-
-                        {error && (
-                            <div className="bg-red-900/20 border border-red-500/50 text-red-500 p-4 rounded flex items-center gap-2 animate-shake">
-                                <ShieldAlert />
-                                <span>{error}</span>
-                            </div>
-                        )}
-
-                        {generatedKey && (
-                            <div className="bg-green-500/10 border border-green-500 p-6 rounded text-center mt-4">
-                                <div className="text-sm opacity-70 mb-2">KEY GERADA COM SUCESSO</div>
-                                <div className="text-2xl md:text-3xl font-bold select-all cursor-pointer text-white drop-shadow-[0_0_5px_rgba(0,255,0,0.5)]">
-                                    {generatedKey}
-                                </div>
-                            </div>
-                        )}
+                {generatedKey && (
+                    <div className="bg-black/50 border border-green-500 p-6 rounded text-center mt-4 relative group cursor-pointer" onClick={() => navigator.clipboard.writeText(generatedKey)}>
+                        <p className="text-xs text-green-700 uppercase font-bold mb-2">CLIQUE PARA COPIAR</p>
+                        <p className="text-2xl md:text-4xl font-black text-white tracking-widest drop-shadow-[0_0_10px_rgba(0,255,65,0.8)]">{generatedKey}</p>
                     </div>
+                )}
+            </div>
 
-                    {/* History Section */}
-                    <div className="border border-green-500/30 rounded-lg p-6 bg-gray-900/30 h-[500px] flex flex-col">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-lg font-bold">MEUS LOGS</h2>
-                            <button onClick={fetchHistory} className="p-2 hover:bg-green-500/10 rounded-full transition" title="Atualizar">
-                                <RefreshCcw size={16} />
-                            </button>
-                        </div>
-
-                        <div className="overflow-y-auto custom-scrollbar flex-1 space-y-2 pr-2">
+            {/* HISTORY TABLE */}
+            <div className="w-full max-w-7xl glass-panel border border-gray-800 overflow-hidden z-10">
+                <div className="p-4 border-b border-gray-800 bg-black/40 flex justify-between items-center">
+                    <h2 className="text-gray-400 text-xs uppercase tracking-widest font-bold">HISTÓRICO DE GERAÇÃO</h2>
+                    <button onClick={fetchHistory} className="text-xs text-green-500 hover:text-white uppercase font-bold">ATUALIZAR</button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <tbody className="text-sm text-gray-400 divide-y divide-gray-800/30">
                             {history.length === 0 ? (
-                                <div className="text-center opacity-30 py-10">NENHUMA KEY ENCONTRADA NO SERVIDOR</div>
+                                <tr><td className="p-8 text-center text-gray-700 uppercase text-xs tracking-widest">NENHUM REGISTRO ENCONTRADO</td></tr>
                             ) : (
-                                history.map((item, idx) => (
-                                    <div key={idx} className="flex flex-col p-3 bg-black/50 border border-green-500/20 rounded hover:border-green-500/50 transition">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="text-green-300 font-bold tracking-wider">{item.license_key}</span>
-                                            <span className={`text-[10px] px-1.5 rounded uppercase ${item.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                history.map((item: any) => (
+                                    <tr key={item.id} className="table-row-hover transition-colors">
+                                        <td className="p-4 font-bold text-green-400 font-mono tracking-wider select-all">{item.license_key}</td>
+                                        <td className="p-4 text-xs uppercase">{item.duration_type}</td>
+                                        <td className="p-4 text-xs font-mono opacity-70">{new Date(item.created_at).toLocaleDateString()}</td>
+                                        <td className="p-4 text-right">
+                                            <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded ${item.status === 'active' ? 'bg-green-900/20 text-green-500' : 'bg-red-900/20 text-red-500'}`}>
                                                 {item.status}
                                             </span>
-                                        </div>
-                                        <div className="flex justify-between text-xs opacity-50">
-                                            <span className="uppercase">{item.duration_type}</span>
-                                            <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                                        </div>
-                                    </div>
+                                        </td>
+                                    </tr>
                                 ))
                             )}
-                        </div>
-                    </div>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </main>
