@@ -39,7 +39,9 @@ export const translations = {
             daily: "Diário (24h)",
             weekly: "Semanal (7 Dias)",
             monthly: "Mensal (30 Dias)",
-            permanent: "Permanente"
+            permanent: "Permanente",
+            hours: "Horas Personalizadas",
+            days: "Dias Personalizados"
         }
     },
     en: {
@@ -82,7 +84,9 @@ export const translations = {
             daily: "Daily (24h)",
             weekly: "Weekly (7 Days)",
             monthly: "Monthly (30 Days)",
-            permanent: "Permanent"
+            permanent: "Permanent",
+            hours: "Custom Hours",
+            days: "Custom Days"
         }
     },
     zh: {
@@ -125,7 +129,9 @@ export const translations = {
             daily: "每日 (24h)",
             weekly: "每周 (7天)",
             monthly: "每月 (30天)",
-            permanent: "永久"
+            permanent: "永久",
+            hours: "自定义小时",
+            days: "自定义天数"
         }
     },
     ru: {
@@ -168,7 +174,9 @@ export const translations = {
             daily: "Ежедневно (24ч)",
             weekly: "Еженедельно (7 дней)",
             monthly: "Ежемесячно (30 дней)",
-            permanent: "Постоянный"
+            permanent: "Постоянный",
+            hours: "Пользовательские часы",
+            days: "Пользовательские дни"
         }
     },
     ar: {
@@ -211,7 +219,9 @@ export const translations = {
             daily: "يومي (24 ساعة)",
             weekly: "أسبوعي (7 أيام)",
             monthly: "شهري (30 يومًا)",
-            permanent: "دائم"
+            permanent: "دائم",
+            hours: "ساعات مخصصة",
+            days: "أيام مخصصة"
         }
     }
 };

@@ -34,6 +34,7 @@ export default function ResellerPanel() {
         clientName: '',
         whatsapp: '',
         durationType: 'monthly',
+        durationValue: 1,
         maxIps: 1
     });
 
@@ -170,6 +171,7 @@ export default function ResellerPanel() {
                 body: JSON.stringify({
                     secretKey,
                     durationType: formData.durationType,
+                    durationValue: formData.durationValue,
                     clientName: formData.clientName,
                     whatsapp: formData.whatsapp,
                     maxIps: formData.maxIps
@@ -180,7 +182,8 @@ export default function ResellerPanel() {
 
             alert(`${t.successKey} ${data.key}`);
             setShowNewClientModal(false);
-            setFormData({ clientName: '', whatsapp: '', durationType: 'monthly', maxIps: 1 });
+            setShowNewClientModal(false);
+            setFormData({ clientName: '', whatsapp: '', durationType: 'monthly', durationValue: 1, maxIps: 1 });
             fetchHistory();
         } catch (err: any) {
             alert(err.message || 'Erro ao gerar');
@@ -402,13 +405,26 @@ export default function ResellerPanel() {
                             </div>
                             <div>
                                 <label className="text-xs text-green-700 font-bold uppercase block mb-1">{t.durationLabel}</label>
-                                <select className="w-full bg-black/50 border border-gray-800 text-white p-2 text-sm focus:border-green-500 outline-none"
-                                    value={formData.durationType} onChange={e => setFormData({ ...formData, durationType: e.target.value })}>
-                                    <option value="daily">{t.duration.daily}</option>
-                                    <option value="weekly">{t.duration.weekly}</option>
-                                    <option value="monthly">{t.duration.monthly}</option>
-                                    <option value="permanent">{t.duration.permanent}</option>
-                                </select>
+                                <div className="flex gap-2">
+                                    <select className="w-full bg-black/50 border border-gray-800 text-white p-2 text-sm focus:border-green-500 outline-none"
+                                        value={formData.durationType} onChange={e => setFormData({ ...formData, durationType: e.target.value })}>
+                                        <option value="daily">{t.duration.daily}</option>
+                                        <option value="weekly">{t.duration.weekly}</option>
+                                        <option value="monthly">{t.duration.monthly}</option>
+                                        <option value="permanent">{t.duration.permanent}</option>
+                                        <option value="hours">{t.duration.hours}</option>
+                                        <option value="days">{t.duration.days}</option>
+                                    </select>
+                                    {(formData.durationType === 'hours' || formData.durationType === 'days') && (
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            className="w-24 bg-black/50 border border-gray-800 text-white p-2 text-sm focus:border-green-500 outline-none text-center"
+                                            value={formData.durationValue}
+                                            onChange={e => setFormData({ ...formData, durationValue: parseInt(e.target.value) || 1 })}
+                                        />
+                                    )}
+                                </div>
                             </div>
                             <div>
                                 <label className="text-xs text-green-700 font-bold uppercase block mb-1">{t.maxIpsLabel}</label>

@@ -5,7 +5,7 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
         const secretKey = body.secretKey?.trim();
-        const { durationType = 'monthly', clientName, whatsapp, maxIps = 1 } = body;
+        const { durationType = 'monthly', durationValue = 1, clientName, whatsapp, maxIps = 1 } = body;
 
         // 1. Validate Input
         if (!secretKey) {
@@ -34,10 +34,13 @@ export async function POST(req: Request) {
         // Calculate Expiry
         const now = new Date();
         let expires = new Date();
+        const val = Math.max(1, parseInt(durationValue.toString()) || 1);
 
         if (durationType === 'weekly') expires.setDate(now.getDate() + 7);
         else if (durationType === 'daily') expires.setDate(now.getDate() + 1);
         else if (durationType === 'permanent') expires.setFullYear(now.getFullYear() + 100);
+        else if (durationType === 'hours') expires.setHours(now.getHours() + val);
+        else if (durationType === 'days') expires.setDate(now.getDate() + val);
         else expires.setDate(now.getDate() + 30); // Monthly default
 
         // 4. Save to Database
@@ -46,7 +49,7 @@ export async function POST(req: Request) {
             .insert({
                 license_key: licenseKey,
                 status: 'active',
-                duration_type: durationType,
+                duration_type: durationType === 'hours' || durationType === 'days' ? `${val} ${durationType}` : durationType,
                 expires_at: expires.toISOString(),
                 reseller_id: reseller.id,
                 created_at: now.toISOString(),
