@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { secretKey } = body;
+        const secretKey = body.secretKey?.trim();
 
         if (!secretKey) {
             return NextResponse.json({ error: 'Secret Key requerida' }, { status: 400 });
