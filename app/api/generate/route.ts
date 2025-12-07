@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
         // 2. Validate Reseller & Get Settings
         const [resellerResult, settingsResult] = await Promise.all([
-            supabase.from('resellers').select('id, name, is_active, balance').eq('secret_key', secretKey).single(),
+            supabase.from('resellers').select('id, name, is_active, balance, custom_costs').eq('secret_key', secretKey).single(),
             supabase.from('system_settings').select('*').single()
         ]);
 
@@ -34,14 +34,20 @@ export async function POST(req: Request) {
 
         // 3. Calculate Cost
         let cost = 0;
-        const costs = settings.credit_costs || { daily: 1, weekly: 5, monthly: 15 };
+        // Prioritize custom costs, fallback to global settings, then hard defaults
+        const globalCosts = settings.credit_costs || { daily: 1, weekly: 5, monthly: 15 };
+        const costs = reseller.custom_costs || globalCosts;
 
-        if (durationType === 'daily') cost = costs.daily;
-        else if (durationType === 'weekly') cost = costs.weekly;
-        else if (durationType === 'monthly') cost = costs.monthly;
-        else if (durationType === 'permanent') cost = costs.monthly * 10; // Rule of thumb or config
-        else if (durationType === 'hours') cost = (costs.daily / 24) * parseInt(durationValue);
-        else if (durationType === 'days') cost = costs.daily * parseInt(durationValue);
+        // Ensure we have values even if custom_costs is partial (merge strategy optional, but here we treat custom_costs as full override or null)
+        // If you want partial override, you'd do: { ...globalCosts, ...reseller.custom_costs }
+        const finalCosts = { ...globalCosts, ...(reseller.custom_costs || {}) };
+
+        if (durationType === 'daily') cost = finalCosts.daily;
+        else if (durationType === 'weekly') cost = finalCosts.weekly;
+        else if (durationType === 'monthly') cost = finalCosts.monthly;
+        else if (durationType === 'permanent') cost = finalCosts.monthly * 10;
+        else if (durationType === 'hours') cost = (finalCosts.daily / 24) * parseInt(durationValue);
+        else if (durationType === 'days') cost = finalCosts.daily * parseInt(durationValue);
 
         // Round cost
         cost = Math.ceil(cost * 100) / 100;
