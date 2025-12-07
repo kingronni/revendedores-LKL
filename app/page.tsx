@@ -23,6 +23,7 @@ export default function ResellerPanel() {
     const [serverStatus, setServerStatus] = useState(true);
     const [mounted, setMounted] = useState(false);
     const [lang, setLang] = useState<Language>('pt');
+    const [balance, setBalance] = useState(0);
 
     // Modals State
     const [showNewClientModal, setShowNewClientModal] = useState(false);
@@ -140,6 +141,7 @@ export default function ResellerPanel() {
             });
             const data = await res.json();
             if (data.keys && Array.isArray(data.keys)) setHistory(data.keys);
+            if (typeof data.balance !== 'undefined') setBalance(data.balance);
         } catch (e) {
             console.error("Erro historico", e);
         }
@@ -227,7 +229,8 @@ export default function ResellerPanel() {
             clientName: key.client_name || '',
             whatsapp: key.whatsapp || '',
             durationType: key.duration_type || 'monthly',
-            maxIps: key.max_ips || 1
+            maxIps: key.max_ips || 1,
+            durationValue: 1
         });
         setShowEditModal(true);
     };
@@ -310,7 +313,13 @@ export default function ResellerPanel() {
             </header>
 
             {/* STATS CARDS */}
-            <div className="w-full max-w-7xl grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 z-10">
+            <div className="w-full max-w-7xl grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 z-10">
+                <StatCard
+                    title="Seu Saldo"
+                    value={balance.toFixed(2)}
+                    color="yellow"
+                    icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>}
+                />
                 <StatCard
                     title={t.stats_active}
                     value={stats.active}
@@ -468,10 +477,10 @@ export default function ResellerPanel() {
     );
 }
 
-const StatCard = ({ title, value, color, icon }: { title: string, value: number, color: string, icon: React.ReactNode }) => {
-    const borderClass = color === 'green' ? 'border-green-500' : color === 'red' ? 'border-red-500' : 'border-blue-500';
-    const textClass = color === 'green' ? 'text-green-500' : color === 'red' ? 'text-red-500' : 'text-blue-500';
-    const bgGlow = color === 'green' ? 'hover:bg-green-900/10' : color === 'red' ? 'hover:bg-red-900/10' : 'hover:bg-blue-900/10';
+const StatCard = ({ title, value, color, icon }: { title: string, value: number | string, color: string, icon: React.ReactNode }) => {
+    const borderClass = color === 'green' ? 'border-green-500' : color === 'red' ? 'border-red-500' : color === 'yellow' ? 'border-yellow-500' : 'border-blue-500';
+    const textClass = color === 'green' ? 'text-green-500' : color === 'red' ? 'text-red-500' : color === 'yellow' ? 'text-yellow-500' : 'text-blue-500';
+    const bgGlow = color === 'green' ? 'hover:bg-green-900/10' : color === 'red' ? 'hover:bg-red-900/10' : color === 'yellow' ? 'hover:bg-yellow-900/10' : 'hover:bg-blue-900/10';
 
     return (
         <div className={`glass-panel p-6 rounded-lg border ${borderClass} relative overflow-hidden group ${bgGlow} transition-all`}>
@@ -480,7 +489,7 @@ const StatCard = ({ title, value, color, icon }: { title: string, value: number,
                     <h3 className="text-gray-400 text-xs uppercase font-bold tracking-widest mb-2">{title}</h3>
                     <div className={`text-4xl font-black ${textClass}`}>{value}</div>
                     <div className={`w-full h-1 mt-4 bg-gray-800 rounded-full overflow-hidden`}>
-                        <div className={`h-full ${color === 'green' ? 'bg-green-500' : color === 'red' ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: '70%' }}></div>
+                        <div className={`h-full ${color === 'green' ? 'bg-green-500' : color === 'red' ? 'bg-red-500' : color === 'yellow' ? 'bg-yellow-500' : 'bg-blue-500'}`} style={{ width: '70%' }}></div>
                     </div>
                 </div>
                 <div className={`p-2 rounded bg-black/50 ${textClass}`}>

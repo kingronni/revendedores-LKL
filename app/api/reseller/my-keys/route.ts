@@ -10,10 +10,10 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Secret Key requerida' }, { status: 400 });
         }
 
-        // 1. Get Reseller ID from Secret
+        // 1. Get Reseller ID & Balance
         const { data: reseller, error: resError } = await supabase
             .from('resellers')
-            .select('id')
+            .select('id, balance')
             .eq('secret_key', secretKey)
             .single();
 
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: keyError.message }, { status: 500 });
         }
 
-        return NextResponse.json({ keys });
+        return NextResponse.json({ keys, balance: reseller.balance || 0 });
 
     } catch (error) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -10,6 +10,21 @@ interface Reseller {
     name: string;
     secret_key: string;
     is_active: boolean;
+    balance?: number; // Added balance
+}
+
+interface Transaction {
+    id: string;
+    amount: number;
+    type: string;
+    description: string;
+    created_at: string;
+}
+
+interface SystemSettings {
+    theme_config: { primary: string; secondary: string; bg: string; };
+    credit_costs: { daily: number; weekly: number; monthly: number; };
+    key_config: { prefix: string; length: number; };
 }
 
 interface ResellerKey {
@@ -27,6 +42,17 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [selectedResellerKeys, setSelectedResellerKeys] = useState<ResellerKey[] | null>(null);
     const [viewingResellerName, setViewingResellerName] = useState('');
+
+    // Settings & Credits
+    const [settings, setSettings] = useState<SystemSettings | null>(null);
+    const [savingSettings, setSavingSettings] = useState(false);
+
+    // Credit Modal
+    const [creditModalOpen, setCreditModalOpen] = useState(false);
+    const [selectedResellerId, setSelectedResellerId] = useState('');
+    const [creditAmount, setCreditAmount] = useState('');
+    const [creditDescription, setCreditDescription] = useState('');
+    const [creditTransactions, setCreditTransactions] = useState<Transaction[]>([]);
 
     // New Reseller Form
     const [newResellerName, setNewResellerName] = useState('');
@@ -46,10 +72,58 @@ export default function AdminDashboard() {
             const dataResellers = await resResellers.json();
             if (dataResellers.resellers) setResellers(dataResellers.resellers);
 
+            // Fetch Settings
+            const resSettings = await fetch('/api/admin/settings');
+            const dataSettings = await resSettings.json();
+            if (dataSettings.settings) setSettings(dataSettings.settings);
+
         } catch (e) {
             console.error(e);
         }
         setLoading(false);
+    };
+
+    const handleManageCredits = async (resellerId: string, name: string) => {
+        setSelectedResellerId(resellerId);
+        setViewingResellerName(name);
+        setCreditModalOpen(true);
+        // Fetch transactions
+        const res = await fetch(`/api/admin/transactions?resellerId=${resellerId}`);
+        const data = await res.json();
+        setCreditTransactions(data.transactions || []);
+    };
+
+    const submitCreditTransaction = async (type: 'add' | 'deduct') => {
+        if (!creditAmount) return;
+
+        await fetch('/api/admin/credits', {
+            method: 'POST',
+            body: JSON.stringify({
+                resellerId: selectedResellerId,
+                amount: parseFloat(creditAmount),
+                type,
+                description: creditDescription || `Manual ${type}`
+            })
+        });
+
+        setCreditAmount('');
+        setCreditDescription('');
+        fetchData(); // Refresh balances
+        // Refresh transactions local list
+        const res = await fetch(`/api/admin/transactions?resellerId=${selectedResellerId}`);
+        const data = await res.json();
+        setCreditTransactions(data.transactions || []);
+    };
+
+    const saveSettings = async () => {
+        if (!settings) return;
+        setSavingSettings(true);
+        await fetch('/api/admin/settings', {
+            method: 'POST',
+            body: JSON.stringify(settings)
+        });
+        setSavingSettings(false);
+        alert('Configurações salvas!');
     };
 
     useEffect(() => {
@@ -186,6 +260,13 @@ export default function AdminDashboard() {
 
                                     <div className="flex gap-3">
                                         <button
+                                            onClick={() => handleManageCredits(r.id, r.name)}
+                                            className="px-4 py-2 rounded font-bold border border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 transition flex items-center gap-2 text-xs uppercase"
+                                        >
+                                            💰 $: {r.balance?.toFixed(2) || '0.00'}
+                                        </button>
+
+                                        <button
                                             onClick={() => viewKeys(r.id, r.name)}
                                             className="px-4 py-2 rounded font-bold border border-blue-500/50 text-blue-400 hover:bg-blue-500/10 transition flex items-center gap-2 text-xs uppercase"
                                         >
@@ -197,7 +278,7 @@ export default function AdminDashboard() {
                                             className={`px-4 py-2 rounded font-bold flex items-center gap-2 transition text-xs uppercase ${r.is_active ? 'bg-red-900/30 text-red-500 border border-red-500 hover:bg-red-500 hover:text-black' : 'bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-500 hover:text-black'}`}
                                         >
                                             <Power size={14} />
-                                            {r.is_active ? 'Bloquear Acesso' : 'Ativar Acesso'}
+                                            {r.is_active ? 'Bloquear' : 'Ativar'}
                                         </button>
                                     </div>
                                 </div>
@@ -291,11 +372,153 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/* OTHER TABS PLACEHOLDERS */}
-                {(activeTab === 'all_keys' || activeTab === 'games' || activeTab === 'settings') && (
+                {/* SETTINGS TAB */}
+                {activeTab === 'settings' && settings && (
+                    <div className="space-y-8 animate-fade-in relative z-10 glass-panel p-6 rounded border border-gray-800">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-white">Configurações do Sistema</h3>
+                            <button
+                                onClick={saveSettings}
+                                disabled={savingSettings}
+                                className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2 rounded transition"
+                            >
+                                {savingSettings ? 'Salvando...' : 'Salvar Alterações'}
+                            </button>
+                        </div>
 
+                        {/* THEME */}
+                        <div className="mb-8">
+                            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">Tema e Aparência</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label className="block text-xs uppercase text-gray-500 mb-1">Cor Primária</label>
+                                    <div className="flex gap-2">
+                                        <input type="color" value={settings.theme_config.primary} onChange={(e) => setSettings({ ...settings, theme_config: { ...settings.theme_config, primary: e.target.value } })} className="h-10 w-10 bg-transparent border-none" />
+                                        <input type="text" value={settings.theme_config.primary} onChange={(e) => setSettings({ ...settings, theme_config: { ...settings.theme_config, primary: e.target.value } })} className="bg-black/50 border border-gray-700 p-2 rounded text-white text-sm w-full" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs uppercase text-gray-500 mb-1">Cor Secundária</label>
+                                    <div className="flex gap-2">
+                                        <input type="color" value={settings.theme_config.secondary} onChange={(e) => setSettings({ ...settings, theme_config: { ...settings.theme_config, secondary: e.target.value } })} className="h-10 w-10 bg-transparent border-none" />
+                                        <input type="text" value={settings.theme_config.secondary} onChange={(e) => setSettings({ ...settings, theme_config: { ...settings.theme_config, secondary: e.target.value } })} className="bg-black/50 border border-gray-700 p-2 rounded text-white text-sm w-full" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* CREDITS COSTS */}
+                        <div className="mb-8">
+                            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">Custo de Créditos (Por Chave)</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label className="block text-xs uppercase text-gray-500 mb-1">Custo Diário</label>
+                                    <input type="number" step="0.1" value={settings.credit_costs.daily} onChange={(e) => setSettings({ ...settings, credit_costs: { ...settings.credit_costs, daily: parseFloat(e.target.value) } })} className="bg-black/50 border border-gray-700 p-3 rounded text-white w-full focus:border-green-500 outline-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs uppercase text-gray-500 mb-1">Custo Semanal</label>
+                                    <input type="number" step="0.1" value={settings.credit_costs.weekly} onChange={(e) => setSettings({ ...settings, credit_costs: { ...settings.credit_costs, weekly: parseFloat(e.target.value) } })} className="bg-black/50 border border-gray-700 p-3 rounded text-white w-full focus:border-green-500 outline-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs uppercase text-gray-500 mb-1">Custo Mensal</label>
+                                    <input type="number" step="0.1" value={settings.credit_costs.monthly} onChange={(e) => setSettings({ ...settings, credit_costs: { ...settings.credit_costs, monthly: parseFloat(e.target.value) } })} className="bg-black/50 border border-gray-700 p-3 rounded text-white w-full focus:border-green-500 outline-none" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* OTHER CONFIGS */}
+                        <div>
+                            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">Configurações de Chave</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs uppercase text-gray-500 mb-1">Prefixo da Chave</label>
+                                    <input type="text" value={settings.key_config.prefix} onChange={(e) => setSettings({ ...settings, key_config: { ...settings.key_config, prefix: e.target.value } })} className="bg-black/50 border border-gray-700 p-3 rounded text-white w-full focus:border-green-500 outline-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs uppercase text-gray-500 mb-1">Tamanho da Chave</label>
+                                    <input type="number" value={settings.key_config.length} onChange={(e) => setSettings({ ...settings, key_config: { ...settings.key_config, length: parseInt(e.target.value) } })} className="bg-black/50 border border-gray-700 p-3 rounded text-white w-full focus:border-green-500 outline-none" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* OTHER TABS PLACEHOLDERS */}
+                {(activeTab === 'all_keys' || activeTab === 'games') && (
                     <div className="flex items-center justify-center h-64 text-gray-500 italic">
                         Funcionalidade em desenvolvimento...
+                    </div>
+                )}
+
+                {/* CREDIT MANAGEMENT MODAL */}
+                {creditModalOpen && (
+                    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+                        <div className="bg-gray-900 border border-yellow-500/50 rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col shadow-[0_0_50px_rgba(255,255,0,0.1)]">
+                            <div className="p-4 border-b border-white/10 flex justify-between items-center bg-gray-800/50">
+                                <h2 className="font-bold text-xl text-yellow-500 flex items-center gap-2">💰 Gerenciar Saldo: <span className="text-white">{viewingResellerName}</span></h2>
+                                <button onClick={() => setCreditModalOpen(false)} className="text-gray-400 hover:text-white transition">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-black/40">
+                                {/* Actions */}
+                                <div className="glass-panel p-4 mb-6 border border-gray-800">
+                                    <h4 className="text-sm font-bold text-gray-400 mb-4 uppercase">Adicionar / Remover Créditos</h4>
+                                    <div className="flex gap-4 mb-4">
+                                        <input
+                                            type="number"
+                                            placeholder="Valor"
+                                            value={creditAmount}
+                                            onChange={(e) => setCreditAmount(e.target.value)}
+                                            className="flex-1 bg-black/50 border border-gray-700 p-3 rounded text-white focus:border-yellow-500 outline-none font-mono text-lg"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Descrição (Opcional)"
+                                            value={creditDescription}
+                                            onChange={(e) => setCreditDescription(e.target.value)}
+                                            className="flex-[2] bg-black/50 border border-gray-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
+                                        />
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <button onClick={() => submitCreditTransaction('add')} className="flex-1 bg-green-900/40 border border-green-500 text-green-500 py-2 rounded font-bold hover:bg-green-500 hover:text-black transition uppercase">
+                                            + Adicionar
+                                        </button>
+                                        <button onClick={() => submitCreditTransaction('deduct')} className="flex-1 bg-red-900/40 border border-red-500 text-red-500 py-2 rounded font-bold hover:bg-red-500 hover:text-black transition uppercase">
+                                            - Remover
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* History */}
+                                <h4 className="text-sm font-bold text-gray-400 mb-4 uppercase flex justify-between">
+                                    Histórico de Transações
+                                </h4>
+                                <div className="space-y-2">
+                                    {creditTransactions.length === 0 ? (
+                                        <div className="text-center opacity-50 py-8">Nenhuma transação encontrada.</div>
+                                    ) : (
+                                        creditTransactions.map((t) => (
+                                            <div key={t.id} className="flex justify-between items-center p-3 rounded bg-white/5 border border-white/5 hover:border-gray-600 transition">
+                                                <div className="flex flex-col">
+                                                    <span className={`text-xs font-bold uppercase ${t.amount >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                        {t.type}
+                                                    </span>
+                                                    <span className="text-gray-400 text-xs">{t.description}</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className={`font-mono font-bold ${t.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {t.amount >= 0 ? '+' : ''}{t.amount.toFixed(2)}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-600">{new Date(t.created_at).toLocaleString()}</div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 
