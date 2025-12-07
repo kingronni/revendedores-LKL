@@ -1,21 +1,36 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Shield, Power, RefreshCw, X, Eye } from 'lucide-react';
+import { Shield, Power, RefreshCw, X, Eye, Key, Users, Activity, TrendingUp, Plus } from 'lucide-react';
+import AdminSidebar from '../components/AdminSidebar';
+import StatsCard from '../components/StatsCard';
+import TrendChart from '../components/TrendChart';
 
 export default function AdminDashboard() {
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [stats, setStats] = useState<any>(null);
     const [resellers, setResellers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedResellerKeys, setSelectedResellerKeys] = useState<any[] | null>(null);
     const [viewingResellerName, setViewingResellerName] = useState('');
 
-    const fetchResellers = async () => {
+    // New Reseller Form
+    const [newResellerName, setNewResellerName] = useState('');
+    const [newResellerKey, setNewResellerKey] = useState('');
+    const [creatingReseller, setCreatingReseller] = useState(false);
+
+    const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/list');
-            const data = await res.json();
-            if (data.resellers) {
-                setResellers(data.resellers);
-            }
+            // Fetch Stats
+            const resStats = await fetch('/api/admin/stats');
+            const dataStats = await resStats.json();
+            if (dataStats.stats) setStats(dataStats.stats);
+
+            // Fetch Resellers
+            const resResellers = await fetch('/api/admin/list');
+            const dataResellers = await resResellers.json();
+            if (dataResellers.resellers) setResellers(dataResellers.resellers);
+
         } catch (e) {
             console.error(e);
         }
@@ -23,7 +38,7 @@ export default function AdminDashboard() {
     };
 
     useEffect(() => {
-        fetchResellers();
+        fetchData();
     }, []);
 
     const toggleReseller = async (id: string, currentStatus: boolean) => {
@@ -31,105 +46,203 @@ export default function AdminDashboard() {
             method: 'POST',
             body: JSON.stringify({ resellerId: id, isActive: !currentStatus }),
         });
-        fetchResellers();
+        fetchData(); // Refresh data
+    };
+
+    const createReseller = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setCreatingReseller(true);
+        try {
+            await fetch('/api/admin/create-reseller', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newResellerName, secretKey: newResellerKey })
+            });
+            setNewResellerName('');
+            setNewResellerKey('');
+            alert('Revendedor criado com sucesso!');
+            fetchData();
+        } catch (e) {
+            alert('Erro ao criar revendedor');
+        }
+        setCreatingReseller(false);
     };
 
     const viewKeys = async (resellerId: string, name: string) => {
         setViewingResellerName(name);
-        // Fetch keys for this reseller
         const res = await fetch(`/api/admin/keys?resellerId=${resellerId}`);
         const data = await res.json();
-        if (data.keys) {
-            setSelectedResellerKeys(data.keys);
-        } else {
-            setSelectedResellerKeys([]);
-        }
+        setSelectedResellerKeys(data.keys || []);
     };
 
     return (
-        <main className="min-h-screen bg-black text-white font-mono p-8 relative">
-            <h1 className="text-3xl font-bold mb-8 text-red-500 border-b border-red-900 pb-4 flex items-center gap-2">
-                <Shield /> ADMIN KILL SWITCH
-            </h1>
+        <div className="flex min-h-screen bg-black text-white font-mono">
+            {/* SIDEBAR */}
+            <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-            <div className="grid gap-4">
-                {resellers.map((r) => (
-                    <div key={r.id} className={`p-4 border rounded flex flex-col md:flex-row justify-between items-center gap-4 ${r.is_active ? 'border-green-500/50 bg-green-900/10' : 'border-red-500/50 bg-red-900/10'}`}>
-                        <div className="flex-1">
-                            <div className="font-bold text-lg">{r.name}</div>
-                            <div className="text-xs opacity-50 font-mono bg-black/30 p-1 rounded inline-block mt-1">{r.secret_key}</div>
+            {/* MAIN CONTENT */}
+            <main className="flex-1 ml-64 p-8 relative overflow-hidden">
+                {/* Background Decor */}
+                <div className="fixed top-0 right-0 w-[500px] h-[500px] bg-green-500/10 blur-[100px] pointer-events-none" />
+
+                {/* HEADER */}
+                <header className="flex justify-between items-center mb-8 relative z-10">
+                    <div>
+                        <h2 className="text-3xl font-black text-white">Welcome, Admin</h2>
+                        <p className="text-gray-500 text-sm">Painel de Controle Principal</p>
+                    </div>
+                    <button onClick={fetchData} className="p-2 bg-green-900/20 rounded-full hover:bg-green-500 hover:text-black hover:rotate-180 transition-all duration-500">
+                        <RefreshCw size={20} />
+                    </button>
+                </header>
+
+                {/* DASHBOARD TAB */}
+                {activeTab === 'dashboard' && (
+                    <div className="space-y-8 animate-fade-in relative z-10">
+                        {/* STATS GRID */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <StatsCard title="Total Keys" value={stats?.totalKeys || 0} icon={<Key size={24} />} color="blue" />
+                            <StatsCard title="Active Keys" value={stats?.activeKeys || 0} icon={<Activity size={24} />} color="green" />
+                            <StatsCard title="Resellers" value={stats?.totalResellers || 0} icon={<Users size={24} />} color="purple" />
+                            <StatsCard title="Weekly Growth" value="+12%" icon={<TrendingUp size={24} />} color="orange" />
                         </div>
 
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => viewKeys(r.id, r.name)}
-                                className="px-4 py-2 rounded font-bold border border-blue-500 text-blue-500 hover:bg-blue-500/10 transition flex items-center gap-2 text-sm"
-                            >
-                                <Eye size={16} /> VER KEYS
-                            </button>
-
-                            <button
-                                onClick={() => toggleReseller(r.id, r.is_active)}
-                                className={`px-4 py-2 rounded font-bold flex items-center gap-2 transition text-sm ${r.is_active ? 'bg-red-600 hover:bg-red-500' : 'bg-green-600 hover:bg-green-500'}`}
-                            >
-                                <Power size={16} />
-                                {r.is_active ? 'BLOQUEAR' : 'ATIVAR'}
-                            </button>
+                        {/* CHART SECTION */}
+                        <div className="glass-panel p-6 rounded-lg border border-green-900/50">
+                            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                <TrendingUp size={20} className="text-green-500" />
+                                Key Generation Trend (Last 7 Days)
+                            </h3>
+                            <div className="w-full h-48 bg-black/40 rounded border border-gray-800 relative">
+                                {stats?.chartData && <TrendChart data={stats.chartData} labels={stats.chartLabels} />}
+                            </div>
                         </div>
                     </div>
-                ))}
-            </div>
+                )}
 
-            {resellers.length === 0 && !loading && <div className="text-gray-500">Nenhum revendedor encontrado. Use o banco de dados para adicionar o primeiro.</div>}
-
-            {/* MODAL DE VISUALIZACAO */}
-            {selectedResellerKeys && (
-                <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-gray-900 border border-green-500/30 rounded-lg w-full max-w-4xl max-h-[80vh] flex flex-col shadow-2xl">
-                        <div className="p-4 border-b border-white/10 flex justify-between items-center bg-gray-800/50">
-                            <h2 className="font-bold text-xl text-green-400">Keys de: {viewingResellerName}</h2>
-                            <button onClick={() => setSelectedResellerKeys(null)} className="text-gray-400 hover:text-white transition">
-                                <X size={24} />
-                            </button>
+                {/* RESELLERS TAB */}
+                {(activeTab === 'resellers' || activeTab === 'dashboard') && (
+                    <div className={`mt-8 animate-fade-in relative z-10 ${activeTab !== 'resellers' && 'hidden'}`}>
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold flex items-center gap-2">
+                                <Users className="text-green-500" /> Gerenciar Revendedores
+                            </h3>
                         </div>
 
-                        <div className="p-4 overflow-y-auto custom-scrollbar flex-1 bg-black/40">
-                            {selectedResellerKeys.length === 0 ? (
-                                <div className="text-center opacity-50 py-20">Este revendedor ainda não gerou nenhuma key.</div>
-                            ) : (
-                                <table className="w-full text-left text-sm">
-                                    <thead className="text-gray-500 border-b border-gray-700 uppercase text-xs">
-                                        <tr>
-                                            <th className="pb-3 pl-2">Key</th>
-                                            <th className="pb-3 text-center">Tipo</th>
-                                            <th className="pb-3 text-center">Data</th>
-                                            <th className="pb-3 text-center">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-800">
-                                        {selectedResellerKeys.map((k) => (
-                                            <tr key={k.id} className="hover:bg-white/5 transition">
-                                                <td className="py-3 pl-2 text-green-400 font-mono font-bold tracking-wider">{k.license_key}</td>
-                                                <td className="py-3 text-center opacity-70 uppercase text-xs">{k.duration_type}</td>
-                                                <td className="py-3 text-center opacity-50">{new Date(k.created_at).toLocaleDateString()}</td>
-                                                <td className="py-3 text-center">
-                                                    <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold ${k.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-500'}`}>
-                                                        {k.status}
-                                                    </span>
-                                                </td>
+                        {/* CREATE RESELLER FORM */}
+                        <div className="glass-panel p-6 mb-8 border border-green-500/30">
+                            <h4 className="text-sm font-bold text-gray-400 mb-4 uppercase tracking-widest">Adicionar Novo Revendedor</h4>
+                            <form onSubmit={createReseller} className="flex gap-4">
+                                <input
+                                    type="text"
+                                    placeholder="Nome do Revendedor"
+                                    value={newResellerName}
+                                    onChange={e => setNewResellerName(e.target.value)}
+                                    className="flex-1 bg-black/50 border border-gray-700 p-3 rounded text-white focus:border-green-500 outline-none"
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Definir Secret Key"
+                                    value={newResellerKey}
+                                    onChange={e => setNewResellerKey(e.target.value)}
+                                    className="flex-1 bg-black/50 border border-gray-700 p-3 rounded text-white focus:border-green-500 outline-none"
+                                    required
+                                />
+                                <button disabled={creatingReseller} className="bg-green-600 hover:bg-green-500 text-black font-bold px-6 rounded flex items-center gap-2 transition">
+                                    <Plus size={18} /> ADICIONAR
+                                </button>
+                            </form>
+                        </div>
+
+                        {/* RESELLERS LIST */}
+                        <div className="grid gap-4">
+                            {resellers.map((r) => (
+                                <div key={r.id} className={`p-4 border rounded glass-panel flex flex-col md:flex-row justify-between items-center gap-4 ${r.is_active ? 'border-green-500/30' : 'border-red-500/30 opacity-70'}`}>
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${r.is_active ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
+                                            {r.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-lg">{r.name}</div>
+                                            <div className="text-xs opacity-50 font-mono bg-black/30 p-1 px-2 rounded inline-block mt-1 tracking-wider text-green-400">{r.secret_key}</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => viewKeys(r.id, r.name)}
+                                            className="px-4 py-2 rounded font-bold border border-blue-500/50 text-blue-400 hover:bg-blue-500/10 transition flex items-center gap-2 text-xs uppercase"
+                                        >
+                                            <Eye size={14} /> Ver Keys
+                                        </button>
+
+                                        <button
+                                            onClick={() => toggleReseller(r.id, r.is_active)}
+                                            className={`px-4 py-2 rounded font-bold flex items-center gap-2 transition text-xs uppercase ${r.is_active ? 'bg-red-900/30 text-red-500 border border-red-500 hover:bg-red-500 hover:text-black' : 'bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-500 hover:text-black'}`}
+                                        >
+                                            <Power size={14} />
+                                            {r.is_active ? 'Bloquear Acesso' : 'Ativar Acesso'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* OTHER TABS PLACEHOLDERS */}
+                {(activeTab === 'all_keys' || activeTab === 'games' || activeTab === 'settings') && (
+                    <div className="flex items-center justify-center h-64 text-gray-500 italic">
+                        Funcionalidade em desenvolvimento...
+                    </div>
+                )}
+
+                {/* MODAL VIEW KEYS */}
+                {selectedResellerKeys && (
+                    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+                        <div className="bg-gray-900 border border-green-500/50 rounded-lg w-full max-w-4xl max-h-[80vh] flex flex-col shadow-[0_0_50px_rgba(0,255,0,0.1)]">
+                            <div className="p-4 border-b border-white/10 flex justify-between items-center bg-gray-800/50">
+                                <h2 className="font-bold text-xl text-green-400 flex items-center gap-2"><Key size={18} /> Keys de: {viewingResellerName}</h2>
+                                <button onClick={() => setSelectedResellerKeys(null)} className="text-gray-400 hover:text-white transition hover:rotate-90 duration-300">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="p-4 overflow-y-auto custom-scrollbar flex-1 bg-black/40">
+                                {selectedResellerKeys.length === 0 ? (
+                                    <div className="text-center opacity-50 py-20 text-sm tracking-widest uppercase">Nenhuma key gerada.</div>
+                                ) : (
+                                    <table className="w-full text-left text-sm border-separate border-spacing-y-1">
+                                        <thead className="text-gray-500 uppercase text-xs">
+                                            <tr>
+                                                <th className="pb-3 pl-2">Key</th>
+                                                <th className="pb-3 text-center">Tipo</th>
+                                                <th className="pb-3 text-center">Data</th>
+                                                <th className="pb-3 text-center">Status</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-
-                        <div className="p-3 border-t border-white/10 bg-gray-800/50 text-right text-xs opacity-50">
-                            Total: {selectedResellerKeys.length} chaves
+                                        </thead>
+                                        <tbody>
+                                            {selectedResellerKeys.map((k) => (
+                                                <tr key={k.id} className="hover:bg-white/5 transition bg-white/[0.02]">
+                                                    <td className="py-3 pl-4 text-green-400 font-mono font-bold tracking-wider border-l-2 border-green-500/0 hover:border-green-500 transition-all">{k.license_key}</td>
+                                                    <td className="py-3 text-center opacity-70 uppercase text-xs">{k.duration_type}</td>
+                                                    <td className="py-3 text-center opacity-50">{new Date(k.created_at).toLocaleDateString()}</td>
+                                                    <td className="py-3 text-center">
+                                                        <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold ${k.status === 'active' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                                                            {k.status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </main>
+                )}
+            </main>
+        </div>
     );
 }
