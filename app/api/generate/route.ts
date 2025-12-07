@@ -5,7 +5,7 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
         const secretKey = body.secretKey?.trim();
-        const { durationType = 'monthly' } = body;
+        const { durationType = 'monthly', clientName, whatsapp, maxIps = 1 } = body;
 
         // 1. Validate Input
         if (!secretKey) {
@@ -48,10 +48,12 @@ export async function POST(req: Request) {
                 status: 'active',
                 duration_type: durationType,
                 expires_at: expires.toISOString(),
-                reseller_id: reseller.id, // Linking to reseller
+                reseller_id: reseller.id,
                 created_at: now.toISOString(),
-                max_ips: 1,
-                used_ips: []
+                max_ips: maxIps,
+                used_ips: [],
+                client_name: clientName || null,
+                whatsapp: whatsapp || null
             })
             .select()
             .single();
