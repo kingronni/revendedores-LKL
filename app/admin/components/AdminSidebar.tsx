@@ -1,14 +1,16 @@
 'use client';
-import { LayoutDashboard, Users, Key, Gamepad2, Settings, Power, Trash, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Key, Gamepad2, Settings, Power, Trash, LogOut, Globe } from 'lucide-react';
 
 export default function AdminSidebar({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (t: string) => void }) {
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
         { id: 'all_keys', label: 'All Keys', icon: <Key size={20} /> },
         { id: 'resellers', label: 'Resellers', icon: <Users size={20} /> },
+        { id: 'connections', label: 'Ext. Connections', icon: <Globe size={20} /> },
         { id: 'games', label: 'Games', icon: <Gamepad2 size={20} /> },
         { id: 'settings', label: 'Settings', icon: <Settings size={20} /> },
     ];
+
 
     return (
         <aside className="fixed left-0 top-0 h-screen w-64 bg-black/90 border-r border-green-900/50 flex flex-col z-50 glass-panel">
@@ -22,8 +24,8 @@ export default function AdminSidebar({ activeTab, setActiveTab }: { activeTab: s
                         key={item.id}
                         onClick={() => setActiveTab(item.id)}
                         className={`w-full flex items-center gap-4 px-6 py-3 text-sm font-bold transition-all relative group ${activeTab === item.id
-                                ? 'text-black bg-green-500'
-                                : 'text-gray-400 hover:text-green-400 hover:bg-green-900/20'
+                            ? 'text-black bg-green-500'
+                            : 'text-gray-400 hover:text-green-400 hover:bg-green-900/20'
                             }`}
                     >
                         {item.icon}

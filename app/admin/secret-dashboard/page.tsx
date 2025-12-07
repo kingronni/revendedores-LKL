@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Shield, Power, RefreshCw, X, Eye, Key, Users, Activity, TrendingUp, Plus } from 'lucide-react';
+import { Shield, Power, RefreshCw, X, Eye, Key, Users, Activity, TrendingUp, Plus, Globe } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import StatsCard from '../components/StatsCard';
 import TrendChart from '../components/TrendChart';
@@ -88,7 +88,7 @@ export default function AdminDashboard() {
                 {/* HEADER */}
                 <header className="flex justify-between items-center mb-8 relative z-10">
                     <div>
-                        <h2 className="text-3xl font-black text-white">Welcome, Admin</h2>
+                        <h2 className="text-3xl font-black text-white">Welcome, LKL</h2>
                         <p className="text-gray-500 text-sm">Painel de Controle Principal</p>
                     </div>
                     <button onClick={fetchData} className="p-2 bg-green-900/20 rounded-full hover:bg-green-500 hover:text-black hover:rotate-180 transition-all duration-500">
@@ -191,8 +191,94 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
+                {/* EXTERNAL CONNECTIONS TAB */}
+                {activeTab === 'connections' && (
+                    <div className="space-y-8 animate-fade-in relative z-10">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xl font-bold flex items-center gap-2">
+                                <Globe className="text-blue-500" /> External Servers
+                            </h3>
+                            <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded flex items-center gap-2 transition text-sm">
+                                <Plus size={16} /> ADD SERVER
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {/* DEMO CARD 1 */}
+                            <div className="glass-panel p-6 border border-gray-700 hover:border-blue-500 transition-all rounded-lg group relative overflow-hidden">
+                                <div className="absolute top-2 right-2 flex gap-1">
+                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                </div>
+                                <div className="flex items-center gap-4 mb-4">
+                                    <div className="p-3 bg-blue-500/20 text-blue-400 rounded-lg">
+                                        <Activity size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-white">Main Provider</h4>
+                                        <p className="text-xs text-gray-400">api.provider-x.com</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-2 text-sm text-gray-400">
+                                    <div className="flex justify-between">
+                                        <span>Status:</span>
+                                        <span className="text-green-400 font-bold">ONLINE</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Ping:</span>
+                                        <span className="text-white">45ms</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Balance:</span>
+                                        <span className="text-green-400">$1,250.00</span>
+                                    </div>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-gray-700 flex gap-2">
+                                    <button className="flex-1 bg-white/5 hover:bg-white/10 py-2 rounded text-xs font-bold transition">TEST CONNECTION</button>
+                                    <button className="flex-1 bg-white/5 hover:bg-white/10 py-2 rounded text-xs font-bold transition">SYNC KEYS</button>
+                                </div>
+                            </div>
+
+                            {/* DEMO CARD 2 (OFFLINE) */}
+                            <div className="glass-panel p-6 border border-gray-700 hover:border-red-500 transition-all rounded-lg group opacity-70">
+                                <div className="absolute top-2 right-2 flex gap-1">
+                                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                                </div>
+                                <div className="flex items-center gap-4 mb-4">
+                                    <div className="p-3 bg-red-500/20 text-red-500 rounded-lg">
+                                        <Globe size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-white">Backup Server</h4>
+                                        <p className="text-xs text-gray-400">backend.backup-v2.net</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-2 text-sm text-gray-400">
+                                    <div className="flex justify-between">
+                                        <span>Status:</span>
+                                        <span className="text-red-500 font-bold">TIMEOUT</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Ping:</span>
+                                        <span className="text-red-500">999ms</span>
+                                    </div>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-gray-700 flex gap-2">
+                                    <button className="flex-1 bg-red-500/20 text-red-500 py-2 rounded text-xs font-bold transition">RETRY</button>
+                                </div>
+                            </div>
+
+                            {/* ADD NEW PLACEHOLDER */}
+                            <div className="border border-dashed border-gray-700 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:text-white hover:border-green-500 hover:bg-green-500/5 transition cursor-pointer p-8">
+                                <Plus size={40} className="mb-2 opacity-50" />
+                                <span className="text-sm font-bold">CONNECT NEW API</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* OTHER TABS PLACEHOLDERS */}
                 {(activeTab === 'all_keys' || activeTab === 'games' || activeTab === 'settings') && (
+
                     <div className="flex items-center justify-center h-64 text-gray-500 italic">
                         Funcionalidade em desenvolvimento...
                     </div>
