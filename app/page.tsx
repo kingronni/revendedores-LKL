@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Flags } from './components/Flags';
