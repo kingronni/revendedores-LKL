@@ -5,12 +5,27 @@ import AdminSidebar from '../components/AdminSidebar';
 import StatsCard from '../components/StatsCard';
 import TrendChart from '../components/TrendChart';
 
+interface Reseller {
+    id: string;
+    name: string;
+    secret_key: string;
+    is_active: boolean;
+}
+
+interface ResellerKey {
+    id: string;
+    license_key: string;
+    duration_type: string;
+    created_at: string;
+    status: string;
+}
+
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [stats, setStats] = useState<any>(null);
-    const [resellers, setResellers] = useState<any[]>([]);
+    const [resellers, setResellers] = useState<Reseller[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedResellerKeys, setSelectedResellerKeys] = useState<any[] | null>(null);
+    const [selectedResellerKeys, setSelectedResellerKeys] = useState<ResellerKey[] | null>(null);
     const [viewingResellerName, setViewingResellerName] = useState('');
 
     // New Reseller Form
@@ -137,7 +152,7 @@ export default function AdminDashboard() {
                                     type="text"
                                     placeholder="Nome do Revendedor"
                                     value={newResellerName}
-                                    onChange={e => setNewResellerName(e.target.value)}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewResellerName(e.target.value)}
                                     className="flex-1 bg-black/50 border border-gray-700 p-3 rounded text-white focus:border-green-500 outline-none"
                                     required
                                 />
@@ -145,7 +160,7 @@ export default function AdminDashboard() {
                                     type="text"
                                     placeholder="Definir Secret Key"
                                     value={newResellerKey}
-                                    onChange={e => setNewResellerKey(e.target.value)}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewResellerKey(e.target.value)}
                                     className="flex-1 bg-black/50 border border-gray-700 p-3 rounded text-white focus:border-green-500 outline-none"
                                     required
                                 />

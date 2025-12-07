@@ -42,7 +42,7 @@ export async function GET() {
         }
 
         if (recentKeys) {
-            recentKeys.forEach((key: any) => {
+            recentKeys.forEach((key: { created_at: string }) => {
                 const keyDate = new Date(key.created_at);
                 const diffTime = Math.abs(today.getTime() - keyDate.getTime());
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

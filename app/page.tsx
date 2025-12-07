@@ -1,13 +1,24 @@
-'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Flags } from './components/Flags';
 import { translations, Language } from '@/lib/i18n';
 
+interface License {
+    id: string;
+    status: 'active' | 'expired';
+    client_name: string;
+    whatsapp: string;
+    duration_type: string;
+    max_ips: number;
+    used_ips: string[];
+    expires_at: string;
+    license_key: string;
+}
+
 export default function ResellerPanel() {
     const [secretKey, setSecretKey] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [history, setHistory] = useState<any[]>([]);
+    const [history, setHistory] = useState<License[]>([]);
     const [loading, setLoading] = useState(false);
     const [serverStatus, setServerStatus] = useState(true);
     const [mounted, setMounted] = useState(false);
@@ -207,7 +218,7 @@ export default function ResellerPanel() {
         }
     };
 
-    const openEditModal = (key: any) => {
+    const openEditModal = (key: License) => {
         setSelectedKey(key);
         setFormData({
             clientName: key.client_name || '',
@@ -219,36 +230,13 @@ export default function ResellerPanel() {
     };
 
     // STATS CALCULATION
-    const stats = history.reduce((acc, item) => {
+    const stats = history.reduce((acc: { active: number; expired: number; permanent: number }, item: License) => {
         if (item.status === 'active') acc.active++;
         else acc.expired++;
 
         if (item.duration_type === 'permanent') acc.permanent++;
         return acc;
     }, { active: 0, expired: 0, permanent: 0 });
-
-    const StatCard = ({ title, value, color, icon }: any) => {
-        const borderClass = color === 'green' ? 'border-green-500' : color === 'red' ? 'border-red-500' : 'border-blue-500';
-        const textClass = color === 'green' ? 'text-green-500' : color === 'red' ? 'text-red-500' : 'text-blue-500';
-        const bgGlow = color === 'green' ? 'hover:bg-green-900/10' : color === 'red' ? 'hover:bg-red-900/10' : 'hover:bg-blue-900/10';
-
-        return (
-            <div className={`glass-panel p-6 rounded-lg border ${borderClass} relative overflow-hidden group ${bgGlow} transition-all`}>
-                <div className="relative z-10 flex justify-between items-start">
-                    <div>
-                        <h3 className="text-gray-400 text-xs uppercase font-bold tracking-widest mb-2">{title}</h3>
-                        <div className={`text-4xl font-black ${textClass}`}>{value}</div>
-                        <div className={`w-full h-1 mt-4 bg-gray-800 rounded-full overflow-hidden`}>
-                            <div className={`h-full ${color === 'green' ? 'bg-green-500' : color === 'red' ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: '70%' }}></div>
-                        </div>
-                    </div>
-                    <div className={`p-2 rounded bg-black/50 ${textClass}`}>
-                        {icon}
-                    </div>
-                </div>
-            </div>
-        );
-    };
 
     if (!mounted) return <div className="min-h-screen bg-black text-white flex items-center justify-center font-mono">CARREGANDO SISTEMA...</div>;
 
@@ -363,7 +351,7 @@ export default function ResellerPanel() {
                             {history.length === 0 ? (
                                 <tr><td colSpan={7} className="p-8 text-center text-gray-700 uppercase text-xs tracking-widest">{t.noRecords}</td></tr>
                             ) : (
-                                history.map((item: any) => (
+                                history.map((item: License) => (
                                     <tr key={item.id} className="table-row-hover transition-colors hover:bg-white/5">
                                         <td className="p-4">
                                             <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded ${item.status === 'active' ? 'text-green-500' : 'text-red-500'}`}>
@@ -463,3 +451,26 @@ export default function ResellerPanel() {
         </main>
     );
 }
+
+const StatCard = ({ title, value, color, icon }: { title: string, value: number, color: string, icon: React.ReactNode }) => {
+    const borderClass = color === 'green' ? 'border-green-500' : color === 'red' ? 'border-red-500' : 'border-blue-500';
+    const textClass = color === 'green' ? 'text-green-500' : color === 'red' ? 'text-red-500' : 'text-blue-500';
+    const bgGlow = color === 'green' ? 'hover:bg-green-900/10' : color === 'red' ? 'hover:bg-red-900/10' : 'hover:bg-blue-900/10';
+
+    return (
+        <div className={`glass-panel p-6 rounded-lg border ${borderClass} relative overflow-hidden group ${bgGlow} transition-all`}>
+            <div className="relative z-10 flex justify-between items-start">
+                <div>
+                    <h3 className="text-gray-400 text-xs uppercase font-bold tracking-widest mb-2">{title}</h3>
+                    <div className={`text-4xl font-black ${textClass}`}>{value}</div>
+                    <div className={`w-full h-1 mt-4 bg-gray-800 rounded-full overflow-hidden`}>
+                        <div className={`h-full ${color === 'green' ? 'bg-green-500' : color === 'red' ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: '70%' }}></div>
+                    </div>
+                </div>
+                <div className={`p-2 rounded bg-black/50 ${textClass}`}>
+                    {icon}
+                </div>
+            </div>
+        </div>
+    );
+};
