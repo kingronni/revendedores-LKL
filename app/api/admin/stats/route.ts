@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
-// Admin client just for this route
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
@@ -28,8 +25,6 @@ export async function GET() {
         }
 
         // 2. Get Chart Data (Last 7 Days)
-        // Harder in raw SQL via Supabase client without stored procedure, 
-        // so we'll fetch created_at of last 1000 keys and process in JS (simple for now)
         const { data: recentKeys } = await supabase
             .from('licenses')
             .select('created_at')
@@ -52,8 +47,6 @@ export async function GET() {
                 const diffTime = Math.abs(today.getTime() - keyDate.getTime());
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 if (diffDays <= 7 && diffDays > 0) {
-                    // index 6 is today, 0 is 7 days ago
-                    // Approximate logic for chart
                     const idx = 7 - diffDays;
                     if (idx >= 0 && idx < 7) last7Days[idx]++;
                 } else if (diffDays <= 1) { // occurred today

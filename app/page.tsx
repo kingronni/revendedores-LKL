@@ -1,8 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import Link from 'next/link';
-import { Lock } from 'lucide-react';
 
 export default function ResellerPanel() {
     const [secretKey, setSecretKey] = useState('');
@@ -242,10 +240,6 @@ export default function ResellerPanel() {
                     </table>
                 </div>
             </div>
-            {/* ADMIN ACCESS BUTTON (DISCREET) */}
-            <Link href="/admin/secret-dashboard" className="fixed bottom-4 right-4 text-green-900/50 hover:text-green-500 transition-colors z-50 p-2">
-                <Lock size={16} />
-            </Link>
         </main>
     );
 }
